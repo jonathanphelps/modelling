@@ -11,70 +11,77 @@ source("funcQueryDB.R")
 source("tsHelper.R")
 
 if(useweather){
-  source("WeatherDecompositionForLocation.R")
   
-  w.data <- WeatherDecompositionComplete(selWeatherCol)
-  w.df<-cbind.data.frame(w.data$d.comp$all_dates,w.data$d.comp$observed,w.data$d.comp$level_plus_season,
-                         w.data$d.comp$remainder)
+  if(!exists("w.df")){
+    source("WeatherDecompositionForLocation.R")
+    
+    w.data <- WeatherDecompositionComplete(selWeatherCol)
+    w.df<-cbind.data.frame(w.data$d.comp$all_dates,w.data$d.comp$observed,w.data$d.comp$level_plus_season,
+                           w.data$d.comp$remainder)
+    
+    colnames(w.df) <- c("Date","observed.weather","level_plus_season","remainder")
+    lastWeatherDate <- w.df$Date[nrow(w.df)]
+  }
+}
+
+if(!loadData){
+  keyword.data.files <- dir(directory, recursive=TRUE, full.names=TRUE, pattern="\\.tsv$")
   
-  colnames(w.df) <- c("Date","observed.weather","level_plus_season","remainder")
-  lastWeatherDate <- w.df$Date[nrow(w.df)]
-}
-
-keyword.data.files <- dir(directory, recursive=TRUE, full.names=TRUE, pattern="\\.tsv$")
-
-temp.df <- data.frame()
-
-r.df <- data.frame()
-for(i in 1:length(keyword.data.files)){
-  temp.df <- fread(keyword.data.files[i],stringsAsFactors=FALSE,integer64 = "character")
-  r.df <- rbind.data.frame(r.df,temp.df)
-}
-
-r.df <- makeColNamesUserFriendly(r.df)
-
-r.df$LandingDate <- as.Date(r.df$LandingDate,format="%d/%m/%Y")
-data.df <- r.df %>% group_by(DCSListingID,Device) %>% arrange(DCSListingID,Device,LandingDate)
-#data.df <- data.df %>% ungroup()
-
-
-columnsAsNumeric <- function(df){
-  allColumns <- colnames(df)
-  for(c in 1:length(numericColumnNames)){
-    ix <- match(numericColumnNames[c],allColumns)
-    if(!is.na(ix)) df[,ix] <- as.numeric(df[,ix])
+  temp.df <- data.frame()
+  
+  r.df <- data.frame()
+  for(i in 1:length(keyword.data.files)){
+    temp.df <- fread(keyword.data.files[i],stringsAsFactors=FALSE,integer64 = "character")
+    r.df <- rbind.data.frame(r.df,temp.df)
   }
-  return(df)
-}
-
-columnsAsInt <- function(df){
-  allColumns <- colnames(df)
-  for(c in 1:length(integerColumns)){
-    ix <- match(integerColumns[c],allColumns)
-    if(!is.na(ix)) df[,ix] <- as.integer(df[,ix])
+  
+  r.df <- makeColNamesUserFriendly(r.df)
+  
+  r.df$LandingDate <- as.Date(r.df$LandingDate,format="%d/%m/%Y")
+  data.df <- r.df %>% group_by(DCSListingID,Device) %>% arrange(DCSListingID,Device,LandingDate)
+  #data.df <- data.df %>% ungroup()
+  
+  
+  columnsAsNumeric <- function(df){
+    allColumns <- colnames(df)
+    for(c in 1:length(numericColumnNames)){
+      ix <- match(numericColumnNames[c],allColumns)
+      if(!is.na(ix)) df[,ix] <- as.numeric(df[,ix])
+    }
+    return(df)
   }
-  return(df)
+  
+  columnsAsInt <- function(df){
+    allColumns <- colnames(df)
+    for(c in 1:length(integerColumns)){
+      ix <- match(integerColumns[c],allColumns)
+      if(!is.na(ix)) df[,ix] <- as.integer(df[,ix])
+    }
+    return(df)
+  }
+  
+  data.df <- data.frame(data.df)
+  
+  data.df <- columnsAsNumeric(data.df)
+  data.df <- columnsAsInt(data.df)
+  data.df <- subset(data.df,Device %in% deviceType)
+  
+  data.df <- subset(data.df,DCSListingID!="0")
+  master.data <- data.df
+  data.df <- NULL
+} else{
+  if(!exists("master.data")) load(masterFileName)
 }
-
-data.df <- data.frame(data.df)
-
-data.df <- columnsAsNumeric(data.df)
-data.df <- columnsAsInt(data.df)
-data.df <- subset(data.df,Device %in% deviceType)
-
-data.df <- subset(data.df,DCSListingID!="0")
 
 #data.df <- subset(data.df,DCSListingID>0)
 
-dcs.Sales <- data.df %>% group_by(DCSListingID) %>% summarise(NSales=sum(Sales))
+dcs.Sales <- master.data %>% group_by(DCSListingID) %>% summarise(NSales=sum(Sales))
 sale.keywords <- dcs.Sales$DCSListingID[which(dcs.Sales$NSales>0)]
 nonsale.keywords <- dcs.Sales$DCSListingID[which(dcs.Sales$NSales==0)]
 
 # Consider only the sale keywords
 #master.data <- subset(data.df,DCSListingID %in% sale.keywords)
 
-master.data <- data.df
-data.df <- NULL
 dcs.counts <- master.data %>% group_by(DCSListingID) %>% tally(sort=T)
 # dcs.NImpressions <- master.data %>% group_by(DCSListingID) %>% summarise(No.Impressions=sum(Impressions))
 # dcs.NClicks <- master.data %>% group_by(DCSListingID) %>% summarise(No.Clicks=sum(Clicks))
@@ -93,7 +100,6 @@ sparsely.occuring.dcs <- dcs.counts$DCSListingID[which(dcs.counts$n<quantile(dcs
 
 #################################################################################################
 
-set.seed(123)
 rand.i <- sample(1:nrow(frequent.counts),Ntotal)
 
 if(enableKWMeasures){
@@ -107,10 +113,11 @@ all.kw.names <- c()
 dominant.periods <- list()
 
 for(k in 1:length(rand.i)){
-  current.dcs <- frequent.counts$DCSListingID[k]
+  current.dcs <- frequent.counts$DCSListingID[rand.i[k]]
   
   model.data <- subset(master.data,DCSListingID == current.dcs)
   kw.name <- unique(model.data$Keyword)
+  cat(sprintf("\n Keyword is: %s",kw.name))
   adgroup.name <- unique(model.data$AdGroup)
   matchtype <- unique(model.data$MatchType)
   

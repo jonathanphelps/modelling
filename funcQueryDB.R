@@ -166,8 +166,7 @@ functionQueryResults <- function(keyword.name,listing.id,select.dates,device.typ
   FROM [dbo].[ProcessOptimumAllocationReports] OA WITH (NOLOCK)
   INNER JOIN [dbo].[Processes] P WITH (NOLOCK) ON (P.[ProcessId] = OA.[ProcessId])
   INNER JOIN [dbo].[Accounts] A WITH (NOLOCK) ON (A.[AccountId] = P.[AccountId])
-  WHERE (OA.[LowercaseKeyword] = '''%s''')
-  AND (OA.[MatchType] = 'exact')"
+  WHERE (OA.[LowercaseKeyword] = '''%s''')"
   
   date.str <-paste(shQuote(as.character(select.dates), type = "sh"),collapse = ',')
   

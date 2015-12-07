@@ -25,6 +25,9 @@ usemaxcpc <- FALSE
 plotData <- FALSE
 enableKWMeasures <- FALSE
 
+loadData <- TRUE
+if(loadData) masterFileName <- "master.RData"
+
 #deviceType <- "Computer"
 
 
