@@ -1,4 +1,4 @@
-directory <- "C://Local Forecaster//Impressions//Data//ArgosSports//"
+directory <- "C://Local Forecaster//Modelling//Data//ArgosSports//"
 
 deviceType <- c("Computer","Tablet")
 #deviceType <- "Mobile"
