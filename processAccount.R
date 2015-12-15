@@ -9,6 +9,8 @@ source("config.R")
 source("dfHelper.R")
 source("funcQueryDB.R")
 source("tsHelper.R")
+if(usemaxcpc) source("idsWithAvailableMaxCPCData.R")
+
 
 if(useweather){
   
@@ -25,7 +27,8 @@ if(useweather){
 }
 
 if(!loadData){
-  keyword.data.files <- dir(directory, recursive=TRUE, full.names=TRUE, pattern="\\.tsv$")
+  cat(sprintf("\n Reading Files.... \n"))
+  keyword.data.files <- dir(directory, recursive=TRUE, full.names=TRUE, pattern=file.pattern)
   
   temp.df <- data.frame()
   
@@ -69,13 +72,14 @@ if(!loadData){
   data.df <- subset(data.df,DCSListingID!="0")
   master.data <- data.df
   data.df <- NULL
+  save(master.data,file=masterFileName)
 } else{
-  if(!exists("master.data")) load(masterFileName)
+  if(!exists(masterFileName)) load(masterFileName)
 }
 
 #data.df <- subset(data.df,DCSListingID>0)
 
-dcs.Sales <- master.data %>% group_by(DCSListingID) %>% summarise(NSales=sum(Sales))
+dcs.Sales <- master.data %>% group_by(DCSListingID) %>% summarise(NSales=sum(UniqueSales))
 sale.keywords <- dcs.Sales$DCSListingID[which(dcs.Sales$NSales>0)]
 nonsale.keywords <- dcs.Sales$DCSListingID[which(dcs.Sales$NSales==0)]
 
@@ -100,7 +104,11 @@ sparsely.occuring.dcs <- dcs.counts$DCSListingID[which(dcs.counts$n<quantile(dcs
 
 #################################################################################################
 
-rand.i <- sample(1:nrow(frequent.counts),Ntotal)
+if(usemaxcpc) {
+  rand.i <- which(frequent.counts$DCSListingID %in% maxcpc.listing.ids)
+} else {
+  rand.i <- sample(1:nrow(frequent.counts),Ntotal)
+}
 
 if(enableKWMeasures){
   keyword.measures <- matrix(0,nrow=length(rand.i),ncol=13)
@@ -136,7 +144,7 @@ for(k in 1:length(rand.i)){
     model.data.tablet <- subset(model.data.tablet,select=-c(Device))
     
     model.data <- model.data %>% group_by(LandingDate) %>% 
-      summarise(Impression=sum(Impressions),Clicks=sum(Clicks),Sales=sum(Sales))
+      summarise(Impression=sum(Impressions),Clicks=sum(Clicks),Sales=sum(UniqueSales))
     
     if((nrow(model.data.tablet) + nrow(model.data.computer)) < 2*nrow(model.data)){
       full <- data.frame(model.data$LandingDate)
@@ -146,12 +154,12 @@ for(k in 1:length(rand.i)){
       
       model.data.tablet$Impressions[is.na(model.data.tablet$Impressions)] <- 0
       model.data.tablet$Clicks[is.na(model.data.tablet$Clicks)] <- 0
-      model.data.tablet$Sales[is.na(model.data.tablet$Sales)] <- 0
+      model.data.tablet$UniqueSales[is.na(model.data.tablet$UniqueSales)] <- 0
       model.data.tablet$AvgPosition[is.na(model.data.tablet$AvgPosition)] <- 1
       
       model.data.computer$Impressions[is.na(model.data.computer$Impressions)] <- 0
       model.data.computer$Clicks[is.na(model.data.computer$Clicks)] <- 0
-      model.data.computer$Sales[is.na(model.data.computer$Sales)] <- 0
+      model.data.computer$UniqueSales[is.na(model.data.computer$UniqueSales)] <- 0
       
       model.data.computer$AvgPosition[is.na(model.data.computer$AvgPosition)] <- 1
       
@@ -198,22 +206,17 @@ for(k in 1:length(rand.i)){
     model.data <- merge(model.data,w.df,by="Date",all.x = T)
     
     model.data <- model.data %>% filter(Date <= lastWeatherDate)
-    
-    model.data$weekno <- week(model.data$Date)
   }
+    
+  if(useweek) model.data$weekno <- week(model.data$Date)
+  if(usedow) model.data$dow <- wday(model.data$Date)
+  
   #----------------------------
   # Merging with max cpc
   #----------------------------
   
   if(usemaxcpc) {
-    if(deviceType != "Mobile") {
-      maxcpc.df <- functionQueryDB(kw.name,listing.id,device.type,
-                                   startDate=as.character(model.data$Date[1]))
-    } else {
-      maxcpc.df <- functionQueryDB(kw.name,listing.id,device.type,
-                                   startDate=as.character(model.data$Date[1]))
-    }
-    
+    load(paste("./Data/MaxcpcData/maxcpc","-",listing.id,"-",device.type,".RData",sep=""))
     model.data <- merge(model.data,maxcpc.df,by="Date",all.x = T)
     model.data$hour.times.minute <- NULL
     first.ix <- which(!(is.na(model.data$MaxCpc))==T)[1]

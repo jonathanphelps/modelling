@@ -1,7 +1,7 @@
 
 if("RF" %in% reg.methods){
   
-  methodIndex <- which(reg.methods == 'RF')
+  methodIndex <- which(method.order == 'RF')
   if(!exists("sel.ix")) {
     sel.ix <- which(maemat[methodIndex,] == min(maemat[methodIndex,]))
     forecaster.query.dates <- fold.test.dates[[sel.ix]]
@@ -44,10 +44,10 @@ if("RF" %in% reg.methods){
 }
 
 if("lm" %in% reg.methods){
+  methodIndex <- which(method.order == 'lm')
   if(!exists("sel.ix")) sel.ix <- which(maemat[methodIndex,] == min(maemat[methodIndex,]))
   if("AvgPosition1" %in% newLagResponseColNames){
     
-    methodIndex <- which(reg.methods == 'lm')
     cat('\n')
     better.outcomes <- length(which((maemat[methodIndex,]/mae.repeat) < 1.0))
     worse.outcomes <- length(which((maemat[methodIndex,]/mae.repeat) >= 1.0))
@@ -65,7 +65,7 @@ if("lm" %in% reg.methods){
 
 if("bartmachine" %in% reg.methods){
   
-  methodIndex <- which(reg.methods == 'bartmachine')
+  methodIndex <- which(method.order == 'bartMachine')
   if(!exists("sel.ix")) sel.ix <- which(maemat[methodIndex,] == min(maemat[methodIndex,]))
   
   bm.means <- bm.predMeans[[sel.ix]]
@@ -100,7 +100,7 @@ if("bartmachine" %in% reg.methods){
 
 if("glm" %in% reg.methods){
   
-  methodIndex <- which(reg.methods == 'glm')
+  methodIndex <- which(method.order == 'glm')
   if(!exists("sel.ix")) sel.ix <- which(maemat[methodIndex,] == min(maemat[methodIndex,]))
   if("AvgPosition1" %in% newLagResponseColNames){
     
@@ -131,14 +131,15 @@ if("glm" %in% reg.methods){
 }
 
 if(compareWithExistingForecaster){
-  select.dates <- fold.test.dates[[sel.ix]]
+  t.ix <- sample(seq(1,noFolds),2)
+  select.dates <- as.Date(unlist(fold.test.dates[t.ix]))
   source("funcQueryDB.R")
   result.df <- functionQueryResults(kw.name,listing.id,select.dates,device.type)
   
-  forecast.result <- cbind.data.frame(select.dates,actualMeans[[sel.ix]],rf.means, 
-                                      bm.means,rowMeans(cbind(rf.means,bm.means)))
+  forecast.result <- cbind.data.frame(select.dates,unlist(actualMeans[t.ix]),unlist(rf.predMeans[t.ix]), 
+                                      unlist(bm.predMeans[t.ix]))
   
-  colnames(forecast.result) <- c("Date","observed","rf.means","bm.means","ensemble")
+  colnames(forecast.result) <- c("Date","observed","rf.means","bm.means")
   forecast.result <- merge(forecast.result,result.df,by="Date")
   forecast.result$hour.times.minute <- NULL
   
@@ -149,8 +150,6 @@ if(compareWithExistingForecaster){
     cat(sprintf("\n Overall MAE from RF for select forecaster dates is %.2f",res))
     res <- with(forecast.result,measureMAE(observed,bm.means))
     cat(sprintf("\n Overall MAE from BART for select forecaster dates is %.2f",res))
-    res <- with(forecast.result,measureMAE(observed,ensemble))
-    cat(sprintf("\n Overall MAE from Ensemble for select forecaster dates is %.2f",res))
     res <- with(forecast.result,measureMAE(observed,ImpM))
     cat(sprintf("\n Overall MAE from Forecaster for same dates is %.2f \n",res))
   }

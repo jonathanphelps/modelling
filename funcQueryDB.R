@@ -3,15 +3,16 @@ library(dplyr)
 library(lubridate)
 library(zoo)
 
+DbConfig <- list(
+  RDbConString = paste("DRIVER=ODBC Driver 11 for SQL Server;Server=mssql.forecaster.com;DATABASE=Insights;UID=insights;PWD=9XPDbY3GlggI;", sep=""),
+  GDbConString = paste("DRIVER=ODBC Driver 11 for SQL Server;Server=mssql.forecaster.com;DATABASE=Partners;UID=azure;PWD=Pokoliko.0;Connection Timeout=180", sep=""),
+  FDbConString = paste("DRIVER=ODBC Driver 11 for SQL Server;Server=mssql.forecaster.com;DATABASE=Forecaster;UID=forecaster-live;PWD=SzmrMem5m8Su;", sep="")
+)
+
+
 functionQueryDB <- function(keyword.name,listing.id,device.type=1,startDate='2014-01-01') {
   
   select.columns <- c("Date","MaxCpc","hour.times.minute")
-  
-  DbConfig <- list(
-    RDbConString = paste("DRIVER=ODBC Driver 11 for SQL Server;Server=mssql.forecaster.com;DATABASE=Insights;UID=insights;PWD=9XPDbY3GlggI;", sep=""),
-    GDbConString = paste("DRIVER=ODBC Driver 11 for SQL Server;Server=mssql.forecaster.com;DATABASE=Partners;UID=azure;PWD=Pokoliko.0;Connection Timeout=180", sep=""),
-    FDbConString = paste("DRIVER=ODBC Driver 11 for SQL Server;Server=mssql.forecaster.com;DATABASE=Forecaster;UID=forecaster-live;PWD=SzmrMem5m8Su;", sep="")
-  )
   
   
   string <- "SELECT OA.[ProcessId]
@@ -47,40 +48,6 @@ ORDER BY OA.[AllocationReportId] ASC;"
   result  <- sqlQuery(channel, query.string, stringsAsFactors = FALSE)
   odbcClose(channel)
   
-  string2 <- "SELECT OA.[ProcessId]
-,CAST(P.[StartTime] AS DATE) AS [Date]
-,P.[StartTime]
-,OA.[TrafficSource]
-,A.[TrafficSourceName]
-,A.[TrafficSourceId]
-,OA.[SeCampaign]
-,OA.[SeCampaignId]
-,OA.[Category]
-,OA.[AdGroup]
-,OA.[SeAdGroupId]
-,OA.[LowercaseKeyword]
-,OA.[SeKeywordId]
-,OA.[MatchType]
-,OA.[DcStormListingId]
-,OA.[OptPosition]
-,OA.[MaxCpc]
-,OA.[DeviceTypeId]
-FROM [dbo].[ProcessOptimumAllocationReports] OA WITH (NOLOCK)
-INNER JOIN [dbo].[Processes] P WITH (NOLOCK) ON (P.[ProcessId] = OA.[ProcessId])
-INNER JOIN [dbo].[Accounts] A WITH (NOLOCK) ON (A.[AccountId] = P.[AccountId])
-WHERE (OA.[LowercaseKeyword] = '%s')
-AND (OA.[MatchType] = 'exact')
-AND (CAST(P.[StartTime] AS DATE) >= '%s')
-ORDER BY OA.[AllocationReportId] ASC;"
-  
-  next.start.date <- tail(result$Date,1)
-  query.string <- sprintf(string2,keyword.name,next.start.date)
-  
-  channel2 <- odbcDriverConnect(connection=DbConfig$FDbConString);
-  
-  result2  <- sqlQuery(channel2, query.string, stringsAsFactors = FALSE)
-  odbcClose(channel2)
-  
   ############################################################################################################
   result <- result %>% arrange(Date)
   
@@ -99,6 +66,42 @@ ORDER BY OA.[AllocationReportId] ASC;"
   maxcpc.df <- dplyr::summarize(group.data, hour.times.minute = max(hour.times.minute))
   
   maxcpc.df <- merge(maxcpc.df, group.data, by=c("Date","hour.times.minute"))
+  
+  ############################################################################################################
+  
+string2 <- "SELECT OA.[ProcessId]
+,CAST(P.[StartTime] AS DATE) AS [Date]
+  ,P.[StartTime]
+  ,OA.[TrafficSource]
+  ,A.[TrafficSourceName]
+  ,A.[TrafficSourceId]
+  ,OA.[SeCampaign]
+  ,OA.[SeCampaignId]
+  ,OA.[Category]
+  ,OA.[AdGroup]
+  ,OA.[SeAdGroupId]
+  ,OA.[LowercaseKeyword]
+  ,OA.[SeKeywordId]
+  ,OA.[MatchType]
+  ,OA.[DcStormListingId]
+  ,OA.[OptPosition]
+  ,OA.[MaxCpc]
+  ,OA.[DeviceTypeId]
+  FROM [dbo].[ProcessOptimumAllocationReports] OA WITH (NOLOCK)
+  INNER JOIN [dbo].[Processes] P WITH (NOLOCK) ON (P.[ProcessId] = OA.[ProcessId])
+  INNER JOIN [dbo].[Accounts] A WITH (NOLOCK) ON (A.[AccountId] = P.[AccountId])
+  WHERE (OA.[LowercaseKeyword] = '%s')
+  AND (OA.[MatchType] = 'exact')
+  AND (CAST(P.[StartTime] AS DATE) >= '%s')
+  ORDER BY OA.[AllocationReportId] ASC;"
+  
+  next.start.date <- tail(result$Date,1)
+  query.string <- sprintf(string2,keyword.name,next.start.date)
+  
+  channel2 <- odbcDriverConnect(connection=DbConfig$FDbConString);
+  
+  result2  <- sqlQuery(channel2, query.string, stringsAsFactors = FALSE)
+  odbcClose(channel2)
   
   ############################################################################################################
   
@@ -136,13 +139,6 @@ ORDER BY OA.[AllocationReportId] ASC;"
 functionQueryResults <- function(keyword.name,listing.id,select.dates,device.type=1) {
   
   select.columns <- c("Date","ImpM","ImpS","hour.times.minute")
-  
-  DbConfig <- list(
-    RDbConString = paste("DRIVER=ODBC Driver 11 for SQL Server;Server=mssql.forecaster.com;DATABASE=Insights;UID=insights;PWD=9XPDbY3GlggI;", sep=""),
-    GDbConString = paste("DRIVER=ODBC Driver 11 for SQL Server;Server=mssql.forecaster.com;DATABASE=Partners;UID=azure;PWD=Pokoliko.0;Connection Timeout=180", sep=""),
-    FDbConString = paste("DRIVER=ODBC Driver 11 for SQL Server;Server=mssql.forecaster.com;DATABASE=Forecaster;UID=forecaster-live;PWD=SzmrMem5m8Su;", sep="")
-  )
-  
   
   string1 <- "SELECT OA.[ProcessId]
   ,CAST(P.[StartTime] AS DATE) AS [Date]
@@ -204,3 +200,61 @@ functionQueryResults <- function(keyword.name,listing.id,select.dates,device.typ
   return(result.df)
   
 }
+
+
+functionQueryMaxCPC <- function(listing.id,device.type=1,startDate='2014-01-01') {
+  
+  select.columns <- c("Date","MaxCpc","hour.times.minute")
+  
+  string <- "SELECT OA.[ProcessId]
+  ,CAST(P.[StartTime] AS DATE) AS [Date]
+  ,P.[StartTime]
+  ,OA.[TrafficSource]
+  ,A.[TrafficSourceName]
+  ,A.[TrafficSourceId]
+  ,OA.[SeCampaign]
+  ,OA.[SeCampaignId]
+  ,OA.[Category]
+  ,OA.[AdGroup]
+  ,OA.[SeAdGroupId]
+  ,OA.[LowercaseKeyword]
+  ,OA.[SeKeywordId]
+  ,OA.[MatchType]
+  ,OA.[DcStormListingId]
+  ,OA.[OptPosition]
+  ,OA.[MaxCpc]
+  ,OA.[DeviceTypeId]
+  FROM [dbo].[ProcessOptimumAllocationReports] OA WITH (NOLOCK)
+  INNER JOIN [dbo].[Processes] P WITH (NOLOCK) ON (P.[ProcessId] = OA.[ProcessId])
+  INNER JOIN [dbo].[Accounts] A WITH (NOLOCK) ON (A.[AccountId] = P.[AccountId])
+  WHERE (OA.[DcStormListingId] = %d);"
+
+  query.string <- sprintf(string,listing.id)
+  
+  channel <- odbcDriverConnect(connection=DbConfig$FDbConString);
+  
+  result  <- sqlQuery(channel, query.string, stringsAsFactors = FALSE)
+  odbcClose(channel)
+  
+  result <- result %>% arrange(Date)
+  
+  result <- subset(result,DeviceTypeId==device.type)
+  
+  result$hour.time <- hour(result$StartTime)
+  result$minute.time <- lubridate::minute(result$StartTime)
+  result$second.time <- lubridate::second(result$StartTime)
+  
+  result$hour.times.minute <- result$hour.time*result$minute.time*result$second.time
+  
+  rownames(result) <- NULL
+  
+  result.data <- result[,select.columns]
+  group.data <- result.data %>% group_by(Date)
+  result.df <- dplyr::summarize(group.data, hour.times.minute = min(hour.times.minute))
+  
+  result.df <- merge(result.df, group.data, by=c("Date","hour.times.minute"))
+  result.df$hour.times.minute <- NULL
+  return(result.df)
+  
+}
+

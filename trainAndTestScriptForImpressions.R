@@ -75,12 +75,12 @@ if("bartmachine" %in% reg.methods){
   }
   
   if("observed.weather" %in% otherVariables) {
-    X <- subset(train,select=-c(eval(parse(text=curr.metric)),AvgPosition,level_plus_season,remainder))
-    Xtest <- subset(test,select=-c(eval(parse(text=curr.metric)),AvgPosition,level_plus_season,remainder))
+    X <- subset(train,select=-c(eval(parse(text=curr.metric)),level_plus_season,remainder,eval(parse(text=lagVariables))))
+    Xtest <- subset(test,select=-c(eval(parse(text=curr.metric)),level_plus_season,remainder,eval(parse(text=lagVariables))))
     
   } else{
-    X <- subset(train,select=-c(eval(parse(text=curr.metric)),AvgPosition,observed.weather))
-    Xtest <- subset(test,select=-c(eval(parse(text=curr.metric)),AvgPosition,observed.weather))
+    X <- subset(train,select=-c(eval(parse(text=curr.metric)),observed.weather,eval(parse(text=lagVariables))))
+    Xtest <- subset(test,select=-c(eval(parse(text=curr.metric)),observed.weather,eval(parse(text=lagVariables))))
   }
   
   Y <- subset(train,select=c(eval(parse(text=curr.metric))))
@@ -106,7 +106,6 @@ if("glm" %in% reg.methods){
   glm.fit <- bayesglm(reg.formula,train,family = gaussian("log"))
   glm.pred <- predict(glm.fit,test,type="response",se.fit = T,interval='prediction')
   glm.predMeans[[fold.cnt]] <- glm.pred$fit
-  #glm.predVariances[[fold.cnt]] <- glm.pred$fit[,2:3]
   nmsemat[method.cnt,fold.cnt] = measureRMSE(test[,eval(response.variable)],glm.pred$fit)
   maemat[method.cnt,fold.cnt] = measureMAE(test[,eval(response.variable)],glm.pred$fit)    
 }

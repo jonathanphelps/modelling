@@ -61,7 +61,7 @@ dominantPeriodsTimeDomain <- function(model.data,select.quantile=0.99,plot.res=F
   if((T %% 2)==1) i.ts <- i.ts[1:(T-1)]
   FF = abs(fft(i.ts)/sqrt(T))^2
   P = (4/T)*FF[1:((T/2)+1)] # Only need the first (n/2)+1 values of the FFT result.
-  f = (0:(T/2))/T # this creates harmonic frequencies from 0 to .5 in steps of 1/128.
+  f = (0:(T/2))/T # this creates harmonic frequencies from 0 to .5
   
   if(plot.res){
     plot((f*T), P,col='red',type='p',xlab='time',ylab='importance') # This plots the periodogram; type = "l" creates a line plot.  Note: l is lowercase L, not number 1.

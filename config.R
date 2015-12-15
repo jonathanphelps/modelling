@@ -1,15 +1,21 @@
+
 directory <- "C://Local Forecaster//Modelling//Data//ArgosSports//"
 
 deviceType <- c("Computer","Tablet")
 #deviceType <- "Mobile"
 
-device.type <- 1
+device.type <- as.integer(1)
 
-if("Mobile" %in% deviceType) device.type=2
+if("Mobile" %in% deviceType) device.type=as.integer(2)
 
-select.master.columns <- c("LandingDate","Impressions","Clicks","AvgPosition","Device","Sales","Cost")
+# For initial processing
+numericColumnNames <- c("Cost","AvgPosition","Revenue","ConversionRate","CTR","CPC","AvgMaxCPC")
+integerColumns <- c("Impressions","Clicks","Sales","UniqueSales","UniqueSalesperClick","QualityScore")
 
-maincolumns <- c("Date","Impression","AvgPosition","weekno")
+# Before aggregation
+select.master.columns <- c("LandingDate","Impressions","Clicks","AvgPosition","Device","UniqueSales","Cost")
+
+maincolumns <- c("Date","Impression","AvgPosition")
 weatherColumns <- c("observed.weather","level_plus_season","remainder")
 
 useweather <- TRUE
@@ -21,12 +27,25 @@ if(useweather){
   model.columns <- maincolumns
 }
 
-usemaxcpc <- FALSE
+useweek <- TRUE # Add week variable
+if(useweek) model.columns <- c(model.columns,"weekno")
+  
+usedow <- TRUE # Add day of week variable
+if(usedow) model.columns <- c(model.columns,"dow")
+
+usemaxcpc <- TRUE # Add max.cpc variable
+if(usemaxcpc) model.columns <- c(model.columns,"MaxCpc")
+
+
 plotData <- FALSE
 enableKWMeasures <- FALSE
 
 loadData <- TRUE
-if(loadData) masterFileName <- "master.RData"
+masterFileName <- "master.RData"
+
+if(!loadData) {
+  file.pattern <- "\\.csv$"
+}
 
 #deviceType <- "Computer"
 
@@ -35,5 +54,3 @@ if(loadData) masterFileName <- "master.RData"
 Ntotal <- 14
 occurence.quantile <- 0.99
 
-numericColumnNames <- c("Cost","AvgPosition","Sales","Revenue","ConversionRate","CTR","CPC","AvgMaxCPC")
-integerColumns <- c("Impressions","Clicks")

@@ -191,7 +191,7 @@ fold.test.dates <- list()
 
 method.order <- c()
 
-sink(logfile,append = TRUE)
+#sink(logfile,append = TRUE)
 
 for(fold.cnt in 1:noFolds){
   
@@ -224,4 +224,4 @@ method.ix <- seq(1,length(reg.methods))
 names(method.order) <- method.ix
 
 source("gatherResultStats.R")
-sink()
+#sink()

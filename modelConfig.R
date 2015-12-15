@@ -6,8 +6,8 @@ curr.metric <- "Impression"
 applyLagPositionTransformation <- FALSE
 transformation.string <- "log"
 
-#lagVariables <- c("MaxCpc")
-no.top.lags.needed <- c(7)
+lagVariables <- c("MaxCpc")
+no.top.lags.needed <- c(3)
 no.lags <- 30
 
 otherVariables.transform <- c("no","no")
@@ -15,7 +15,7 @@ names(otherVariables.transform) <- c("observed.weather","AvgPosition")
 #otherVariables <- c("level_plus_season","remainder")
 enableshuffle <- TRUE
 enableHyperparameterLearning <- FALSE
-compareWithExistingForecaster <- TRUE
+compareWithExistingForecaster <- FALSE
 addWeekNo <- TRUE
 onlyNumericVars <- FALSE
 

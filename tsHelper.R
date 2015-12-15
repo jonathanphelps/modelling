@@ -1,6 +1,20 @@
 library(tseries)
 library(fracdiff)
 
+toDay <- function(dat) {
+  
+  stopifnot(class(dat) == "Date")
+  
+  dayCheck <- function(dat) {
+    d <- as.POSIXlt(dat)$mday           # correct for 0:11 range
+    
+    d
+  }
+  
+  res <- sapply(dat, dayCheck)
+  invisible(res)
+}
+
 findSignificantCCFLags <- function(df,pred.variable,response.variable,no.top.lags.needed,
                                    no.lags=30,significance.level=0.95)
 {
